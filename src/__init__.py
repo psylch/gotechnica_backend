@@ -1,0 +1,1 @@
+"""Snapopedia backend package root."""

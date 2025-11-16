@@ -1,0 +1,21 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.swp
+*.log
+
+# Env & packaging
+.env
+.venv/
+.uv/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+.claude/

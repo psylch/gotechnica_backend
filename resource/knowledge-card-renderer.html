@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Card Renderer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --cream: #FAF8F5;
+            --charcoal: #2A2A2A;
+            --warm-gray: #8B8580;
+            --accent: #A67C5C;
+            --soft-shadow: rgba(42, 42, 42, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--cream);
+            color: var(--charcoal);
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* WebGL Canvas Background */
+        #gradient-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        /* Grain texture overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 80px 24px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Form Styles */
+        .form-wrapper {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .form-wrapper.hidden {
+            display: none;
+        }
+
+        .form-header {
+            margin-bottom: 64px;
+        }
+
+        .form-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(42px, 6vw, 64px);
+            font-weight: 300;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+            color: var(--charcoal);
+        }
+
+        .form-header p {
+            font-size: 16px;
+            color: var(--warm-gray);
+            font-weight: 300;
+            letter-spacing: 0.01em;
+        }
+
+        .form-group {
+            margin-bottom: 48px;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            animation-fill-mode: both;
+        }
+
+        .form-group:nth-child(1) { animation-delay: 0.1s; }
+        .form-group:nth-child(2) { animation-delay: 0.2s; }
+        .form-group:nth-child(3) { animation-delay: 0.3s; }
+        .form-group:nth-child(4) { animation-delay: 0.4s; }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--warm-gray);
+            margin-bottom: 12px;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        textarea {
+            width: 100%;
+            padding: 16px 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 300;
+            color: var(--charcoal);
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(42, 42, 42, 0.12);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        textarea:focus {
+            border-bottom-color: var(--accent);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.6;
+        }
+
+        .json-inputs {
+            display: grid;
+            gap: 32px;
+            margin-top: 24px;
+            padding: 32px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 2px;
+            backdrop-filter: blur(10px);
+        }
+
+        button {
+            margin-top: 16px;
+            padding: 20px 48px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--cream);
+            background: var(--charcoal);
+            border: none;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: var(--accent);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                        height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button span {
+            position: relative;
+            z-index: 1;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px var(--soft-shadow);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Card Styles */
+        .card-wrapper {
+            display: none;
+            animation: fadeInScale 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card-wrapper.visible {
+            display: block;
+        }
+
+        .knowledge-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(42, 42, 42, 0.12),
+                        0 8px 16px rgba(42, 42, 42, 0.08);
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .knowledge-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 32px 80px rgba(42, 42, 42, 0.16),
+                        0 12px 24px rgba(42, 42, 42, 0.12);
+        }
+
+        .card-image-wrapper {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .knowledge-card:hover .card-image {
+            transform: scale(1.05);
+        }
+
+        .card-image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.9), transparent);
+            pointer-events: none;
+        }
+
+        .card-content {
+            padding: 56px 48px 64px;
+        }
+
+        .card-label {
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            margin-bottom: 24px;
+            display: inline-block;
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+        }
+
+        .card-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 400;
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+            color: var(--charcoal);
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+        }
+
+        .card-description {
+            font-size: 17px;
+            line-height: 1.8;
+            color: var(--warm-gray);
+            font-weight: 300;
+            letter-spacing: 0.005em;
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+        }
+
+        .card-actions {
+            margin-top: 48px;
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--charcoal);
+            border: 1px solid rgba(42, 42, 42, 0.2);
+            padding: 16px 36px;
+        }
+
+        .btn-secondary::before {
+            background: var(--charcoal);
+        }
+
+        .btn-secondary:hover {
+            color: var(--cream);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 48px 20px;
+            }
+
+            .form-header {
+                margin-bottom: 48px;
+            }
+
+            .form-group {
+                margin-bottom: 36px;
+            }
+
+            .json-inputs {
+                padding: 24px 20px;
+            }
+
+            .card-image-wrapper {
+                height: 240px;
+            }
+
+            .card-content {
+                padding: 40px 28px 48px;
+            }
+
+            button {
+                width: 100%;
+                padding: 18px 36px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-header h1 {
+                font-size: 36px;
+            }
+
+            .card-image-wrapper {
+                height: 200px;
+            }
+
+            .card-content {
+                padding: 32px 24px 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- WebGL Background -->
+    <canvas id="gradient-canvas"></canvas>
+    <div class="grain-overlay"></div>
+
+    <div class="container">
+        <!-- Form View -->
+        <div class="form-wrapper" id="formView">
+            <div class="form-header">
+                <h1>Create Knowledge Card</h1>
+                <p>Transform insights into elegant, shareable cards</p>
+            </div>
+
+            <form id="knowledgeForm">
+                <div class="form-group">
+                    <label for="pictureUrl">Image URL</label>
+                    <input
+                        type="url"
+                        id="pictureUrl"
+                        name="pictureUrl"
+                        placeholder="https://example.com/image.png"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="itemName">Item Name</label>
+                    <input
+                        type="text"
+                        id="itemName"
+                        name="itemName"
+                        placeholder="Enter a unique identifier"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Knowledge Content</label>
+                    <div class="json-inputs">
+                        <div>
+                            <label for="title">Title (max 10 words)</label>
+                            <input
+                                type="text"
+                                id="title"
+                                name="title"
+                                placeholder="A concise, memorable title"
+                                required
+                            >
+                        </div>
+                        <div>
+                            <label for="description">Description (2-4 sentences)</label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                placeholder="Provide a clear, educational explanation of this knowledge point"
+                                required
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit">
+                    <span>Generate Card</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Card View -->
+        <div class="card-wrapper" id="cardView">
+            <div class="knowledge-card">
+                <div class="card-image-wrapper">
+                    <img id="cardImage" class="card-image" src="" alt="">
+                    <div class="card-image-overlay"></div>
+                </div>
+                <div class="card-content">
+                    <span class="card-label" id="cardLabel"></span>
+                    <h2 class="card-title" id="cardTitle"></h2>
+                    <p class="card-description" id="cardDescription"></p>
+                    <div class="card-actions">
+                        <button type="button" class="btn-secondary" id="createAnother">
+                            <span>Create Another</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebGL Gradient Background
+        const canvas = document.getElementById('gradient-canvas');
+        const gl = canvas.getContext('webgl');
+
+        let mouse = { x: 0.5, y: 0.5 };
+        let targetMouse = { x: 0.5, y: 0.5 };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mouse tracking with smooth interpolation
+        document.addEventListener('mousemove', (e) => {
+            targetMouse.x = e.clientX / window.innerWidth;
+            targetMouse.y = 1.0 - (e.clientY / window.innerHeight);
+        });
+
+        // Vertex shader
+        const vertexShaderSource = `
+            attribute vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+
+        // Fragment shader with organic gradient
+        const fragmentShaderSource = `
+            precision mediump float;
+            uniform vec2 resolution;
+            uniform float time;
+            uniform vec2 mouse;
+
+            vec3 palette(float t) {
+                vec3 a = vec3(0.98, 0.97, 0.96);
+                vec3 b = vec3(0.65, 0.49, 0.36);
+                vec3 c = vec3(0.5, 0.5, 0.5);
+                vec3 d = vec3(0.8, 0.7, 0.6);
+                return a + b * cos(6.28318 * (c * t + d));
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution;
+                vec2 m = mouse * 0.5 + 0.5;
+
+                float d1 = length(uv - m);
+                float d2 = length(uv - vec2(1.0 - m.x, m.y));
+                float d3 = length(uv - vec2(m.x, 1.0 - m.y));
+
+                float pattern = sin(d1 * 8.0 + time * 0.5) * 0.5 + 0.5;
+                pattern += sin(d2 * 6.0 - time * 0.3) * 0.5 + 0.5;
+                pattern += sin(d3 * 10.0 + time * 0.4) * 0.5 + 0.5;
+                pattern /= 3.0;
+
+                vec3 color = palette(pattern + time * 0.1);
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const vertices = new Float32Array([
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, 1,
+        ]);
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        const position = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+        const resolutionLocation = gl.getUniformLocation(program, 'resolution');
+        const timeLocation = gl.getUniformLocation(program, 'time');
+        const mouseLocation = gl.getUniformLocation(program, 'mouse');
+
+        let startTime = Date.now();
+
+        function render() {
+            // Smooth mouse interpolation
+            mouse.x += (targetMouse.x - mouse.x) * 0.05;
+            mouse.y += (targetMouse.y - mouse.y) * 0.05;
+
+            const time = (Date.now() - startTime) * 0.001;
+
+            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            gl.uniform1f(timeLocation, time);
+            gl.uniform2f(mouseLocation, mouse.x, mouse.y);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(render);
+        }
+
+        render();
+
+        // Form handling
+        const form = document.getElementById('knowledgeForm');
+        const formView = document.getElementById('formView');
+        const cardView = document.getElementById('cardView');
+        const createAnotherBtn = document.getElementById('createAnother');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const formData = {
+                pictureUrl: document.getElementById('pictureUrl').value,
+                itemName: document.getElementById('itemName').value,
+                json: {
+                    title: document.getElementById('title').value,
+                    desc: document.getElementById('description').value
+                }
+            };
+
+            // Populate card
+            document.getElementById('cardImage').src = formData.pictureUrl;
+            document.getElementById('cardLabel').textContent = formData.itemName;
+            document.getElementById('cardTitle').textContent = formData.json.title;
+            document.getElementById('cardDescription').textContent = formData.json.desc;
+
+            // Show card, hide form
+            formView.classList.add('hidden');
+            cardView.classList.add('visible');
+
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        createAnotherBtn.addEventListener('click', () => {
+            // Reset form
+            form.reset();
+
+            // Show form, hide card
+            cardView.classList.remove('visible');
+            formView.classList.remove('hidden');
+
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>
