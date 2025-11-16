@@ -13,6 +13,7 @@ class ErrorCode(str, Enum):
     VALIDATION_ERROR = "validation_error"
     NOT_IMPLEMENTED = "not_implemented"
     STORAGE_ERROR = "storage_error"
+    EXTERNAL_SERVICE_ERROR = "external_service_error"
 
 
 class AppException(StarletteHTTPException):
@@ -42,3 +43,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = ErrorCode.INTERNAL_ERROR if exc.status_code >= 500 else ErrorCode.VALIDATION_ERROR
         return JSONResponse(status_code=exc.status_code, content=format_error_response(code, str(exc.detail)))
+
+
+class ExternalServiceError(RuntimeError):
+    """Raised when an upstream dependency returns an unexpected error."""
+
+    def __init__(self, service: str, message: str, status_code: int | None = None):
+        self.service = service
+        self.status_code = status_code
+        super().__init__(message)

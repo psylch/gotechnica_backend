@@ -23,6 +23,7 @@
 
 | 任务 | 状态 | 负责 | 说明 |
 |------|------|------|------|
+
 | 创建文档体系 | ✅ | Claude | CLAUDE.md, decisions.md, tasks.md 等 |
 | 搭建 FastAPI 项目结构 | ✅ | Claude | 已创建 FastAPI 应用、路由与 /health |
 | 实现配置管理模块 | ✅ | Claude | src/config.py - 读取 .env 文件 |
@@ -70,18 +71,18 @@
 
 | 任务 | 状态 | 负责 | 说明 |
 |------|------|------|------|
-| DIFY 客户端基础封装 | ⏳ | Claude | src/clients/dify_client.py - 通用请求方法 |
-| DIFY 照片预处理调用 | ⏳ | Claude | preprocessing workflow |
-| DIFY 卡片生成调用 | ⏳ | Claude | card generation workflow |
-| DIFY 问答调用 | ⏳ | Claude | Q&A workflow |
-| Gemini 客户端封装 | ⏳ | Claude | src/clients/gemini_client.py - 图片编辑 |
-| ElevenLabs 客户端封装 | ⏳ | Claude | src/clients/elevenlabs_client.py - TTS |
-| 统一错误处理和超时 | ⏳ | Claude | 所有客户端的异常处理 |
+| DIFY 客户端基础封装 | ✅ | Claude | src/clients/dify_client.py - 通用请求方法 |
+| DIFY 照片预处理调用 | ✅ | Claude | preprocessing workflow 封装 analyze |
+| DIFY 卡片生成调用 | ✅ | Claude | card generation workflow 封装 generate_card |
+| DIFY 问答调用 | ✅ | Claude | Q&A workflow 封装 ask |
+| Gemini 客户端封装 | ✅ | Claude | src/clients/gemini_client.py - 图片编辑 |
+| ElevenLabs 客户端封装 | ✅ | Claude | src/clients/elevenlabs_client.py - TTS |
+| 统一错误处理和超时 | ✅ | Claude | ExternalServiceError + 各客户端 timeout |
 
 **完成标准**:
-- [ ] 所有客户端可以独立调用和测试
-- [ ] 有完善的超时设置（参考 `docs/decisions.md` 6.5）
-- [ ] 有统一的错误处理
+- [x] 所有客户端可以独立调用和测试
+- [x] 有完善的超时设置（参考 `docs/decisions.md` 6.5）
+- [x] 有统一的错误处理
 - [ ] 日志记录所有 API 调用
 
 **依赖环境变量** (需开发者填写):
@@ -93,7 +94,8 @@
 - `ELEVENLABS_VOICE_ID`
 
 **依赖文档** (需开发者补充):
-- `docs/dify_schemas.md` - DIFY 实际返回格式
+- `docs/dify_schemas.md` - DIFY 实际返回格式（这里不写完整的响应格式了 只写了Agent所返回的JSON string的格式 用来解析）
+- `docs/dify_api.md` - DIFY API docs （这里定义了相对完整的响应格式）
 
 ---
 

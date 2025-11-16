@@ -45,6 +45,12 @@ class AppSettings(BaseSettings):
     timeout_elevenlabs_tts: int = 30
     timeout_dify_qa: int = 20
 
+    # OpenRouter / Gemini via OpenRouter
+    openrouter_api_key: Optional[str] = None
+    openrouter_site_url: Optional[str] = None
+    openrouter_site_name: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, value: str) -> str:
