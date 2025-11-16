@@ -105,20 +105,20 @@
 
 | 任务 | 状态 | 负责 | 说明 |
 |------|------|------|------|
-| Pipeline 服务基础框架 | ⏳ | Claude | src/services/pipeline.py |
-| 步骤1：照片预处理 | ⏳ | Claude | 调用 DIFY，判断 clear/unclear |
-| 步骤2a：卡片生成 | ⏳ | Claude | 调用 DIFY，解析 title 和 desc |
-| 步骤2b：图片高亮 | ⏳ | Claude | 调用 Gemini，生成高亮图并上传 R2 |
-| 步骤2：并行执行 | ⏳ | Claude | asyncio.gather 同时执行 2a 和 2b |
-| 步骤3：语音生成 | ⏳ | Claude | 调用 ElevenLabs，上传音频到 R2 |
-| Pipeline 整合与错误处理 | ⏳ | Claude | 降级策略、失败处理 |
-| 卡片生成 API 接口 | ⏳ | Claude | POST /api/v1/cards/generate |
+| Pipeline 服务基础框架 | ✅ | Claude | src/services/pipeline.py |
+| 步骤1：照片预处理 | ✅ | Claude | 调用 DIFY，判断 clear/unclear |
+| 步骤2a：卡片生成 | ✅ | Claude | 调用 DIFY，解析 title 和 desc |
+| 步骤2b：图片高亮 | ✅ | Claude | 调用 Gemini（OpenRouter），生成高亮图并上传 R2 |
+| 步骤2：并行执行 | ✅ | Claude | asyncio.gather 并行卡片/高亮 |
+| 步骤3：语音生成 | ✅ | Claude | 调用 ElevenLabs，上传音频到 R2 |
+| Pipeline 整合与错误处理 | ✅ | Claude | 高亮/语音失败自动降级 |
+| 卡片生成 API 接口 | ✅ | Claude | POST /api/v1/cards/generate 已接入 Pipeline |
 
 **完成标准**:
-- [ ] 完整 pipeline 可以运行
-- [ ] 正常情况返回：卡片 + 高亮图 + 语音
-- [ ] 部分失败时有降级策略（参考 `docs/decisions.md` 3.3.2）
-- [ ] 响应时间 < 10 秒（并行执行）
+- [x] 完整 pipeline 可以运行
+- [x] 正常情况返回：卡片 + 高亮图 + 语音
+- [x] 部分失败时有降级策略（参考 `docs/decisions.md` 3.3.2）
+- [x] 响应时间 < 10 秒（并行执行）
 
 **关键决策参考**:
 - `docs/decisions.md` 第 2、3、4 节
@@ -132,15 +132,15 @@
 
 | 任务 | 状态 | 负责 | 说明 |
 |------|------|------|------|
-| 问答服务实现 | ⏳ | Claude | 调用 DIFY Q&A workflow |
-| card_context 拼接 | ⏳ | Claude | 格式化卡片信息传给 DIFY |
-| 可选语音生成 | ⏳ | Claude | 根据请求参数决定是否生成语音 |
-| 问答 API 接口 | ⏳ | Claude | POST /api/v1/cards/chat |
+| 问答服务实现 | ✅ | Claude | src/services/chat.py 调用 DIFY Q&A |
+| card_context 拼接 | ✅ | Claude | 请求体传入 card_context，转发至 DIFY |
+| 可选语音生成 | ✅ | Claude | need_audio 参数控制 ElevenLabs 降级 |
+| 问答 API 接口 | ✅ | Claude | POST /api/v1/chat/ 返回 answer/audio |
 
 **完成标准**:
-- [ ] 支持多轮对话（conversation_id 由前端管理）
-- [ ] 回答文本口语化（2-4 句话）
-- [ ] 可选返回语音
+- [x] 支持多轮对话（conversation_id 由前端管理）
+- [x] 回答文本口语化（2-4 句话）
+- [x] 可选返回语音
 
 **关键决策参考**:
 - `docs/decisions.md` 第 5 节

@@ -40,16 +40,16 @@ class ImageUploadService:
         if not content:
             raise AppException(error_code=ErrorCode.VALIDATION_ERROR, message="上传文件为空")
 
-        key = self._build_storage_key(extension)
-        content_type = CONTENT_TYPE_MAPPING[extension]
-        try:
-            url = self._r2_client.upload_file(key=key, data=content, content_type=content_type)
-        except R2ClientError as exc:
-            self._logger.error("R2 上传失败: %s", exc)
-            raise AppException(error_code=ErrorCode.STORAGE_ERROR, message="图片上传失败", status_code=502) from exc
+        key = self._build_storage_key("original_image", extension)
+        return self._upload_bytes(key=key, data=content, content_type=CONTENT_TYPE_MAPPING[extension])
 
-        self._logger.info("图片已上传 key=%s", key)
-        return url
+    async def upload_highlight_image(self, data: bytes, extension: str = "png") -> str:
+        key = self._build_storage_key("highlighted_image", extension)
+        return self._upload_bytes(key=key, data=data, content_type=f"image/{extension}")
+
+    async def upload_audio(self, data: bytes, extension: str = "mp3") -> str:
+        key = self._build_storage_key("card_audio", extension)
+        return self._upload_bytes(key=key, data=data, content_type="audio/mpeg")
 
     def _resolve_extension(self, upload: UploadFile) -> str:
         if upload.filename:
@@ -76,10 +76,20 @@ class ImageUploadService:
         return extension
 
     @staticmethod
-    def _build_storage_key(extension: str) -> str:
+    def _build_storage_key(prefix: str, extension: str) -> str:
         timestamp = int(time.time())
         random_id = uuid4().hex[:8]
-        return f"original_image/{timestamp}_{random_id}.{extension}"
+        return f"{prefix}/{timestamp}_{random_id}.{extension}"
+
+    def _upload_bytes(self, *, key: str, data: bytes, content_type: str) -> str:
+        try:
+            url = self._r2_client.upload_file(key=key, data=data, content_type=content_type)
+        except R2ClientError as exc:
+            self._logger.error("R2 上传失败: %s", exc)
+            raise AppException(error_code=ErrorCode.STORAGE_ERROR, message="文件上传失败", status_code=502) from exc
+
+        self._logger.info("R2 已上传 key=%s", key)
+        return url
 
 
 @lru_cache(maxsize=1)

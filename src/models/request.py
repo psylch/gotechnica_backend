@@ -24,3 +24,5 @@ class ChatRequest(BaseRequest):
     card_context: str
     question: str
     conversation_id: Optional[str] = None
+    image_url: Optional[HttpUrl] = None
+    need_audio: bool = False
